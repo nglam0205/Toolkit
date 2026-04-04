@@ -39,6 +39,8 @@ public class ToolkitMod extends Mod {
                     block.nonOptionalConsumers = removePower(block.nonOptionalConsumers);
                     block.optionalConsumers = removePower(block.optionalConsumers);
                     block.updateConsumers = removePower(block.updateConsumers);
+                    // Remove power bar (its lambda references consPower)
+                    block.removeBar("power");
                     // Clear power consumer reference
                     block.consPower = null;
                     block.consumesPower = false;
