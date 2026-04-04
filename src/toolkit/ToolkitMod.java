@@ -8,6 +8,7 @@ import mindustry.mod.Mod;
 import mindustry.type.Item;
 import mindustry.type.Liquid;
 import mindustry.world.Block;
+import mindustry.world.blocks.production.Drill;
 
 public class ToolkitMod extends Mod {
     public ToolkitMod() {
@@ -19,7 +20,7 @@ public class ToolkitMod extends Mod {
             }
             Groups.build.each((build) -> {
                 Block block = build.block;
-
+                if ( !(block instanceof Drill)) return;
                 for (Item item : Vars.content.items()) {
                     if (block.consumesItem(item)) {
                         if (build.items.get(item) < block.itemCapacity) {
