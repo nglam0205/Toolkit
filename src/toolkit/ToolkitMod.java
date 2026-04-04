@@ -51,22 +51,22 @@ public class ToolkitMod extends Mod {
             
             // Add settings UI category
             Vars.ui.settings.addCategory("Toolkit Options", table -> {
-                table.checkPref("tk-prod-power", true, "Production: Ignore Power (Requires Restart)");
-                table.checkPref("tk-prod-items", true, "Production: Auto-fill Items");
-                table.checkPref("tk-prod-liquids", true, "Production: Auto-fill Liquids");
+                table.checkPref("Production: Ignore Power (Restart Required)", true);
+                table.checkPref("Production: Auto-fill Items", true);
+                table.checkPref("Production: Auto-fill Liquids", true);
 
-                table.checkPref("tk-craft-power", true, "Crafting: Ignore Power (Requires Restart)");
-                table.checkPref("tk-craft-items", true, "Crafting: Auto-fill Items");
-                table.checkPref("tk-craft-liquids", true, "Crafting: Auto-fill Liquids");
+                table.checkPref("Crafting: Ignore Power (Restart Required)", true);
+                table.checkPref("Crafting: Auto-fill Items", true);
+                table.checkPref("Crafting: Auto-fill Liquids", true);
 
-                table.checkPref("tk-turret-power", true, "Turrets: Ignore Power (Requires Restart)");
-                table.checkPref("tk-turret-items", true, "Turrets: Auto-fill Items");
-                table.checkPref("tk-turret-liquids", true, "Turrets: Auto-fill Liquids");
+                table.checkPref("Turrets: Ignore Power (Restart Required)", true);
+                table.checkPref("Turrets: Auto-fill Items", true);
+                table.checkPref("Turrets: Auto-fill Liquids", true);
             });
 
-            boolean prodPower = Core.settings.getBool("tk-prod-power", true);
-            boolean craftPower = Core.settings.getBool("tk-craft-power", true);
-            boolean turretPower = Core.settings.getBool("tk-turret-power", true);
+            boolean prodPower = Core.settings.getBool("Production: Ignore Power (Restart Required)", true);
+            boolean craftPower = Core.settings.getBool("Crafting: Ignore Power (Restart Required)", true);
+            boolean turretPower = Core.settings.getBool("Turrets: Ignore Power (Restart Required)", true);
 
             for (Block block : Vars.content.blocks()) {
                 boolean remove = false;
@@ -95,14 +95,14 @@ public class ToolkitMod extends Mod {
                 return;
             }
             
-            boolean prodItems = Core.settings.getBool("tk-prod-items", true);
-            boolean prodLiquids = Core.settings.getBool("tk-prod-liquids", true);
+            boolean prodItems = Core.settings.getBool("Production: Auto-fill Items", true);
+            boolean prodLiquids = Core.settings.getBool("Production: Auto-fill Liquids", true);
             
-            boolean craftItems = Core.settings.getBool("tk-craft-items", true);
-            boolean craftLiquids = Core.settings.getBool("tk-craft-liquids", true);
+            boolean craftItems = Core.settings.getBool("Crafting: Auto-fill Items", true);
+            boolean craftLiquids = Core.settings.getBool("Crafting: Auto-fill Liquids", true);
             
-            boolean turretItems = Core.settings.getBool("tk-turret-items", true);
-            boolean turretLiquids = Core.settings.getBool("tk-turret-liquids", true);
+            boolean turretItems = Core.settings.getBool("Turrets: Auto-fill Items", true);
+            boolean turretLiquids = Core.settings.getBool("Turrets: Auto-fill Liquids", true);
             
             Groups.build.each((build) -> {
                 Block block = build.block;
