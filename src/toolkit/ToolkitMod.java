@@ -21,8 +21,7 @@ public class ToolkitMod extends Mod {
             || block instanceof Pump
             || block instanceof SolidPump
             || block instanceof GenericCrafter
-            || block instanceof Turret
-            || block instanceof PowerBlock;
+            || block instanceof Turret;
     }
 
     public ToolkitMod() {
