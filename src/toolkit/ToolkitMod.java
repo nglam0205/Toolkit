@@ -16,12 +16,17 @@ import mindustry.world.blocks.production.SolidPump;
 
 public class ToolkitMod extends Mod {
 
+    private boolean isRTG(Block block) {
+        return block.name.equals("rtg-generator");
+    }
+
     private boolean target(Block block) {
         return block instanceof Drill
             || block instanceof Pump
             || block instanceof SolidPump
             || block instanceof GenericCrafter
-            || block instanceof Turret;
+            || block instanceof Turret
+            || isRTG(block);
     }
 
     public ToolkitMod() {
@@ -30,17 +35,22 @@ public class ToolkitMod extends Mod {
 
             Groups.build.each(build -> {
                 Block block = build.block;
+
                 if (!target(block)) return;
 
                 if (!(block instanceof Turret) && build.items != null) {
                     for (Item item : Vars.content.items()) {
                         if (block.consumesItem(item)) {
-                            build.items.set(item, block.itemCapacity + 1000);
+                            build.items.set(
+                                item,
+                                block.itemCapacity + 1000
+                            );
                         }
                     }
                 }
 
-                if (build.liquids != null) {
+                if (!(block instanceof PowerBlock)
+                    && build.liquids != null) {
                     for (Liquid liquid : Vars.content.liquids()) {
                         if (block.consumesLiquid(liquid)) {
                             build.liquids.set(
