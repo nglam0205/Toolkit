@@ -20,6 +20,7 @@ import mindustry.world.consumers.Consume;
 import mindustry.world.consumers.ConsumeItems;
 import mindustry.world.consumers.ConsumeLiquid;
 import mindustry.world.consumers.ConsumePower;
+import mindustry.world.modules.ItemModule;
 import mindustry.world.modules.LiquidModule;
 import arc.util.Timer;
 
@@ -47,6 +48,23 @@ public class ToolkitMod extends Mod {
         }
     }
 
+    /** Silicon consumer that tolerates machines placed before they had an item storage. */
+    private static class AcceleratorItems extends ConsumeItems {
+        AcceleratorItems() {
+            super(new ItemStack[]{new ItemStack(Items.silicon, 1)});
+        }
+
+        @Override
+        public float efficiency(Building build) {
+            return build.items == null ? 0f : super.efficiency(build);
+        }
+
+        @Override
+        public void trigger(Building build) {
+            if (build.items != null) super.trigger(build);
+        }
+    }
+
     /** Cryofluid consumer that tolerates machines placed before they had a liquid tank. */
     private static class AcceleratorLiquid extends ConsumeLiquid {
         AcceleratorLiquid() {
@@ -62,6 +80,15 @@ public class ToolkitMod extends Mod {
         public void update(Building build) {
             if (build.liquids != null) super.update(build);
         }
+    }
+
+    /** Item/liquid filter arrays only exist once the block has been initialized. */
+    private boolean consumesItem(Block block, Item item) {
+        return block.itemFilter != null && item.id < block.itemFilter.length && block.itemFilter[item.id];
+    }
+
+    private boolean consumesLiquid(Block block, Liquid liquid) {
+        return block.liquidFilter != null && liquid.id < block.liquidFilter.length && block.liquidFilter[liquid.id];
     }
 
     private boolean isAccelerator(Block block) {
@@ -143,18 +170,33 @@ public class ToolkitMod extends Mod {
             block.hasLiquids = true;
             block.liquidCapacity = Math.max(block.liquidCapacity, 20f);
 
-            if (!block.consumesItem(Items.silicon)) {
-                addConsumer(block, new ConsumeItems(new ItemStack[]{new ItemStack(Items.silicon, 1)}));
+            if (!consumesItem(block, Items.silicon)) {
+                addConsumer(block, new AcceleratorItems());
             }
-            if (!block.consumesLiquid(Liquids.cryofluid)) {
+            if (!consumesLiquid(block, Liquids.cryofluid)) {
                 addConsumer(block, new AcceleratorLiquid());
             }
         }
     }
 
+    /** True once every block has been initialized, which is when their item/liquid filters exist. */
+    private boolean contentReady() {
+        if (Vars.content.blocks().size == 0 || Vars.content.items().size == 0 || Vars.content.liquids().size == 0) {
+            return false;
+        }
+
+        for (Block block : Vars.content.blocks()) {
+            if (block.itemFilter == null || block.itemFilter.length < Vars.content.items().size) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public ToolkitMod() {
         Timer.schedule(() -> {
-            if (!configured && Vars.content.blocks().size > 0) {
+            if (!configured && contentReady()) {
                 configured = true;
                 configureBlocks();
             }
@@ -164,16 +206,17 @@ public class ToolkitMod extends Mod {
             Groups.build.each(build -> {
                 Block block = build.block;
 
-                //machines already placed from older saves have no liquid tank yet
-                if (isAccelerator(block) && build.liquids == null) {
-                    build.liquids = new LiquidModule();
+                //machines already placed from older saves have no item/liquid storage yet
+                if (isAccelerator(block)) {
+                    if (build.items == null) build.items = new ItemModule();
+                    if (build.liquids == null) build.liquids = new LiquidModule();
                 }
 
                 if (!target(block)) return;
 
                 if (!(block instanceof Turret) && build.items != null) {
                     for (Item item : Vars.content.items()) {
-                        if (block.consumesItem(item)) {
+                        if (consumesItem(block, item)) {
                             build.items.set(
                                 item,
                                 block.itemCapacity + 1000
@@ -185,7 +228,7 @@ public class ToolkitMod extends Mod {
                 if (!(block instanceof PowerBlock)
                     && build.liquids != null) {
                     for (Liquid liquid : Vars.content.liquids()) {
-                        if (block.consumesLiquid(liquid)) {
+                        if (consumesLiquid(block, liquid)) {
                             build.liquids.set(
                                 liquid,
                                 block.liquidCapacity + 1000
