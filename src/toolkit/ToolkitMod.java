@@ -29,6 +29,11 @@ public class ToolkitMod extends Mod {
     /** The "speed-up" blocks that get item and liquid inputs instead of power. */
     private static final String[] acceleratorBlocks = {"overdrive-projector", "overdrive-dome"};
 
+    /** Every block runs this much faster than its default speed. */
+    private static final float speedMultiplier = 1.75f;
+    /** Boost duration, refreshed every tick of the loop below. */
+    private static final float speedDuration = 0.5f;
+
     private boolean configured;
 
     /** Power consumer that never requests any power, so the block always runs without a power grid. */
@@ -45,6 +50,14 @@ public class ToolkitMod extends Mod {
         @Override
         public float requestedPower(Building build) {
             return 0f;
+        }
+
+        /** Keeps the power bar full, since some machines read the power status directly instead of their efficiency. */
+        @Override
+        public void update(Building build) {
+            if (build.power != null) {
+                build.power.status = 1f;
+            }
         }
     }
 
@@ -158,6 +171,8 @@ public class ToolkitMod extends Mod {
     private void configureBlocks() {
         for (Block block : Vars.content.blocks()) {
             removePowerConsumption(block);
+            //blocks that refuse overdrive would otherwise drop the speed boost every frame
+            block.canOverdrive = true;
         }
 
         for (String name : acceleratorBlocks) {
@@ -211,6 +226,9 @@ public class ToolkitMod extends Mod {
                     if (build.items == null) build.items = new ItemModule();
                     if (build.liquids == null) build.liquids = new LiquidModule();
                 }
+
+                //overdrive-style boost, so every machine runs faster than default
+                build.applyBoost(speedMultiplier, speedDuration);
 
                 if (!target(block)) return;
 
