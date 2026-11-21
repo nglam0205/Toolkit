@@ -3,6 +3,7 @@ package toolkit;
 import mindustry.Vars;
 import mindustry.content.Items;
 import mindustry.content.Liquids;
+import mindustry.core.GameState.State;
 import mindustry.gen.Building;
 import mindustry.gen.Groups;
 import mindustry.mod.Mod;
@@ -320,7 +321,12 @@ public class ToolkitMod extends Mod {
                 configureBlocks();
             }
 
-            if (!Vars.state.isPlaying()) return;
+            if (Vars.state.getState() != State.playing) {
+                return;
+            }
+
+            //the only vanilla generator explosion path left: reactorExplosions also gates combustion/steam blasts
+            Vars.state.rules.reactorExplosions = false;
 
             Groups.build.each(build -> {
                 Block block = build.block;
