@@ -10,12 +10,7 @@ import mindustry.type.Item;
 import mindustry.type.ItemStack;
 import mindustry.type.Liquid;
 import mindustry.world.Block;
-import mindustry.world.blocks.defense.turrets.Turret;
-import mindustry.world.blocks.power.PowerBlock;
-import mindustry.world.blocks.production.Drill;
-import mindustry.world.blocks.production.GenericCrafter;
-import mindustry.world.blocks.production.Pump;
-import mindustry.world.blocks.production.SolidPump;
+import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.consumers.Consume;
 import mindustry.world.consumers.ConsumeItems;
 import mindustry.world.consumers.ConsumeLiquid;
@@ -30,7 +25,7 @@ public class ToolkitMod extends Mod {
     private static final String[] acceleratorBlocks = {"overdrive-projector", "overdrive-dome"};
 
     /** Every block runs this much faster than its default speed. */
-    private static final float speedMultiplier = 1.75f;
+    private static final float speedMultiplier = 3f;
     /** Boost duration, refreshed every tick of the loop below. */
     private static final float speedDuration = 0.5f;
 
@@ -111,17 +106,45 @@ public class ToolkitMod extends Mod {
         return false;
     }
 
-    private boolean isRTG(Block block) {
-        return block.name.equals("rtg-generator");
+    /** Fills every item the machine eats, so drills, factories and generators never run dry. */
+    private void fillItems(Building build, Block block) {
+        if (build.items == null) return;
+
+        //turrets keep their ammunition in their own ammo counter, not in the item storage
+        if (build instanceof ItemTurret.ItemTurretBuild) {
+            fillTurret(build);
+            return;
+        }
+
+        for (Item item : Vars.content.items()) {
+            if (consumesItem(block, item)) {
+                build.items.set(item, block.itemCapacity + 1000);
+            }
+        }
     }
 
-    private boolean target(Block block) {
-        return block instanceof Drill
-            || block instanceof Pump
-            || block instanceof SolidPump
-            || block instanceof GenericCrafter
-            || block instanceof Turret
-            || isRTG(block);
+    /** Keeps every turret loaded with its first ammunition type. */
+    private void fillTurret(Building build) {
+        ItemTurret.ItemTurretBuild turretBuild = (ItemTurret.ItemTurretBuild) build;
+        ItemTurret turret = (ItemTurret) build.block;
+        if (turret.ammoTypes.size == 0 || turretBuild.totalAmmo >= turret.maxAmmo) return;
+
+        Item ammo = turret.ammoTypes.keys().next();
+        //bounded, in case an ammo type does not add anything
+        for (int i = 0; i <= turret.maxAmmo && turretBuild.totalAmmo < turret.maxAmmo; i++) {
+            turretBuild.handleItem(build, ammo);
+        }
+    }
+
+    /** Fills every liquid the machine eats: coolant for turrets, cryofluid for reactors, water for pumps. */
+    private void fillLiquids(Building build, Block block) {
+        if (build.liquids == null) return;
+
+        for (Liquid liquid : Vars.content.liquids()) {
+            if (consumesLiquid(block, liquid)) {
+                build.liquids.set(liquid, block.liquidCapacity + 1000);
+            }
+        }
     }
 
     /** Replaces the power consumer of one block with a free one. Buffered consumers (batteries, cores) keep working. */
@@ -230,30 +253,8 @@ public class ToolkitMod extends Mod {
                 //overdrive-style boost, so every machine runs faster than default
                 build.applyBoost(speedMultiplier, speedDuration);
 
-                if (!target(block)) return;
-
-                if (!(block instanceof Turret) && build.items != null) {
-                    for (Item item : Vars.content.items()) {
-                        if (consumesItem(block, item)) {
-                            build.items.set(
-                                item,
-                                block.itemCapacity + 1000
-                            );
-                        }
-                    }
-                }
-
-                if (!(block instanceof PowerBlock)
-                    && build.liquids != null) {
-                    for (Liquid liquid : Vars.content.liquids()) {
-                        if (consumesLiquid(block, liquid)) {
-                            build.liquids.set(
-                                liquid,
-                                block.liquidCapacity + 1000
-                            );
-                        }
-                    }
-                }
+                fillItems(build, block);
+                fillLiquids(build, block);
             });
         }, 0f, 0.1f);
     }
