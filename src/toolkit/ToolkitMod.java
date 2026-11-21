@@ -9,8 +9,13 @@ import mindustry.mod.Mod;
 import mindustry.type.Item;
 import mindustry.type.ItemStack;
 import mindustry.type.Liquid;
+import mindustry.type.LiquidStack;
 import mindustry.world.Block;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
+import mindustry.world.blocks.power.NuclearReactor;
+import mindustry.world.blocks.power.PowerGenerator;
+import mindustry.world.blocks.units.UnitAssembler;
+import mindustry.world.blocks.units.UnitFactory;
 import mindustry.world.consumers.Consume;
 import mindustry.world.consumers.ConsumeItems;
 import mindustry.world.consumers.ConsumeLiquid;
@@ -25,9 +30,12 @@ public class ToolkitMod extends Mod {
     private static final String[] acceleratorBlocks = {"overdrive-projector", "overdrive-dome"};
 
     /** Every block runs this much faster than its default speed. */
-    private static final float speedMultiplier = 3f;
-    /** Boost duration, refreshed every tick of the loop below. */
-    private static final float speedDuration = 0.5f;
+    private static final float speedMultiplier = 3.5f;
+    /**
+     * Boost duration in frames (the game subtracts Time.delta every frame, so values below 1 last a
+     * single frame only). Refreshed every 0.1s of the loop below, which is about 6 frames.
+     */
+    private static final float speedDuration = 30f;
 
     private boolean configured;
 
@@ -116,9 +124,33 @@ public class ToolkitMod extends Mod {
             return;
         }
 
+        //unit constructors use dynamic item requirements, which static filters do not describe
+        if (block instanceof UnitFactory) {
+            for (UnitFactory.UnitPlan plan : ((UnitFactory) block).plans) {
+                fillStacks(build, block, plan.requirements);
+            }
+            return;
+        }
+        if (block instanceof UnitAssembler) {
+            for (UnitAssembler.AssemblerUnitPlan plan : ((UnitAssembler) block).plans) {
+                fillStacks(build, block, plan.itemReq);
+            }
+            return;
+        }
+
         for (Item item : Vars.content.items()) {
             if (consumesItem(block, item)) {
                 build.items.set(item, block.itemCapacity + 1000);
+            }
+        }
+    }
+
+    private void fillStacks(Building build, Block block, ItemStack[] stacks) {
+        if (stacks == null) return;
+
+        for (ItemStack stack : stacks) {
+            if (stack != null && stack.item != null) {
+                build.items.set(stack.item, Math.max(block.itemCapacity, stack.amount * 2) + 1000);
             }
         }
     }
@@ -143,6 +175,19 @@ public class ToolkitMod extends Mod {
         for (Liquid liquid : Vars.content.liquids()) {
             if (consumesLiquid(block, liquid)) {
                 build.liquids.set(liquid, block.liquidCapacity + 1000);
+            }
+        }
+
+        //assemblers list their liquids per unit plan instead of in a static filter
+        if (block instanceof UnitAssembler) {
+            for (UnitAssembler.AssemblerUnitPlan plan : ((UnitAssembler) block).plans) {
+                if (plan.liquidReq == null) continue;
+
+                for (LiquidStack stack : plan.liquidReq) {
+                    if (stack != null && stack.liquid != null) {
+                        build.liquids.set(stack.liquid, block.liquidCapacity + 1000);
+                    }
+                }
             }
         }
     }
@@ -196,6 +241,16 @@ public class ToolkitMod extends Mod {
             removePowerConsumption(block);
             //blocks that refuse overdrive would otherwise drop the speed boost every frame
             block.canOverdrive = true;
+
+            //generators must never melt down or blow up when destroyed
+            if (block instanceof PowerGenerator) {
+                ((PowerGenerator) block).explosionDamage = 0;
+                ((PowerGenerator) block).explosionRadius = 0;
+            }
+            //thorium reactors build heat until they explode; no heat means no meltdown
+            if (block instanceof NuclearReactor) {
+                ((NuclearReactor) block).heating = 0f;
+            }
         }
 
         for (String name : acceleratorBlocks) {
