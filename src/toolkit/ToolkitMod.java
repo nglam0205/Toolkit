@@ -12,6 +12,7 @@ import mindustry.type.Liquid;
 import mindustry.type.LiquidStack;
 import mindustry.world.Block;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
+import mindustry.world.blocks.power.ConsumeGenerator;
 import mindustry.world.blocks.power.NuclearReactor;
 import mindustry.world.blocks.power.PowerGenerator;
 import mindustry.world.blocks.units.UnitAssembler;
@@ -236,6 +237,28 @@ public class ToolkitMod extends Mod {
         return result;
     }
 
+    /**
+     * Turns a generator into a completely harmless block: no damage, no fireballs, no fire, no scorch,
+     * no shake and no explosion from the items/liquids it stores.
+     */
+    private void disableExplosion(PowerGenerator generator) {
+        generator.explosionDamage = 0;
+        generator.explosionRadius = 0;
+        generator.explosionFireballs = 0;
+        generator.explosionPuddles = 0;
+        generator.explosionPuddleLiquid = null;
+        generator.explosionMinWarmup = Float.MAX_VALUE;
+        generator.explosionIgnitionChance = 0f;
+        generator.explosionBreaksProps = false;
+        generator.explosionShake = 0f;
+        generator.explosionScorchSize = 0;
+
+        //stored fuel must not turn into an explosion either: these are the block-wide multipliers
+        generator.baseExplosiveness = 0f;
+        generator.flammabilityScale = 0f;
+        generator.explosivenessScale = 0f;
+    }
+
     private void configureBlocks() {
         for (Block block : Vars.content.blocks()) {
             removePowerConsumption(block);
@@ -244,8 +267,11 @@ public class ToolkitMod extends Mod {
 
             //generators must never melt down or blow up when destroyed
             if (block instanceof PowerGenerator) {
-                ((PowerGenerator) block).explosionDamage = 0;
-                ((PowerGenerator) block).explosionRadius = 0;
+                disableExplosion((PowerGenerator) block);
+            }
+            //liquid-producing generators also blow up when their output tank is full
+            if (block instanceof ConsumeGenerator) {
+                ((ConsumeGenerator) block).explodeOnFull = false;
             }
             //thorium reactors build heat until they explode; no heat means no meltdown
             if (block instanceof NuclearReactor) {
